@@ -23,8 +23,7 @@ function Checkout({ cartItems }) {
 
   const subtotal = cartItems.reduce(
     (total, item) =>
-      total +
-      Number(item.price) * Number(item.quantity),
+      total + Number(item.price) * Number(item.quantity),
     0
   );
 
@@ -53,14 +52,14 @@ function Checkout({ cartItems }) {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
-    // Login check
+    // Check login
     if (!user) {
       alert("Please login before placing an order.");
       navigate("/login");
       return;
     }
 
-    // Customer email check
+    // Check email
     if (!user.email) {
       alert(
         "Your account does not have an email address."
@@ -68,7 +67,7 @@ function Checkout({ cartItems }) {
       return;
     }
 
-    // Cart check
+    // Check cart
     if (!cartItems || cartItems.length === 0) {
       alert("Your cart is empty.");
       navigate("/cart");
@@ -78,9 +77,12 @@ function Checkout({ cartItems }) {
     setLoading(true);
 
     try {
+      // =========================
+      // SEND ORDER TO BACKEND
+      // =========================
+
       const response = await fetch(
-  "https://shopease-backend-hdgf.onrender.com/api/orders"
-);
+        "https://shopease-backend-hdgf.onrender.com/api/orders",
         {
           method: "POST",
 
@@ -89,21 +91,14 @@ function Checkout({ cartItems }) {
           },
 
           body: JSON.stringify({
-            // =========================
             // USER
-            // =========================
-
             userId: user.id,
 
             customerName: formData.name,
 
-            // Customer's registered email
             customerEmail: user.email,
 
-            // =========================
             // DELIVERY
-            // =========================
-
             phone: formData.phone,
 
             address: formData.address,
@@ -112,32 +107,19 @@ function Checkout({ cartItems }) {
 
             pincode: formData.pincode,
 
-            // =========================
             // PAYMENT
-            // =========================
-
             paymentMethod: formData.payment,
 
-            // =========================
             // PRODUCTS
-            // =========================
-
             items: cartItems.map((item) => ({
               productId: item.id,
-
               name: item.name,
-
               price: Number(item.price),
-
               image: item.image || "",
-
               quantity: Number(item.quantity),
             })),
 
-            // =========================
             // PRICE
-            // =========================
-
             subtotal: Number(subtotal),
 
             discount: 0,
@@ -165,7 +147,7 @@ function Checkout({ cartItems }) {
         alert(
           `🎉 Order placed successfully!
 
-Order ID: ${data.order.id}
+Order ID: ${data.order?.id || data.order?._id || "Created"}
 
 📧 Confirmation email sent to:
 ${user.email}`
