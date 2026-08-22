@@ -21,7 +21,7 @@ function ProductDetails() {
 
   // Get single product from MongoDB
   useEffect(() => {
-    fetch(`http://localhost:5000/api/products/${id}`)
+  fetch(`https://shopease-backend-hdgf.onrender.com/api/products/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Product not found");

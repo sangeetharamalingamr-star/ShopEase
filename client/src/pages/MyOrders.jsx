@@ -77,7 +77,7 @@ function MyOrders() {
         // ======================================
 
         const url =
-          `http://localhost:5000/api/orders/user/${userId}`;
+         `https://shopease-backend-hdgf.onrender.com/api/orders/user/${userId}`
 
         console.log(
           "Fetching:",

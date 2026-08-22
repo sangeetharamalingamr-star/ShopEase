@@ -13,7 +13,8 @@ function Login() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/users/login",
+        "https://shopease-backend-hdgf.onrender.com/api/users/login",
+        
         {
           method: "POST",
           headers: {
