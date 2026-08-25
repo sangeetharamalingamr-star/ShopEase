@@ -28,7 +28,7 @@ function Products({
 
   // Get products from MongoDB
   useEffect(() => {
-   fetch(`https://shopease-backend-hdgf.onrender.com/api/products/${id}`)
+  fetch("https://shopease-backend-hdgf.onrender.com/api/products")
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch products");
