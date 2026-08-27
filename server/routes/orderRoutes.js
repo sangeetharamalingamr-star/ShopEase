@@ -17,19 +17,19 @@ const transporter = nodemailer.createTransport({
 });
 
 // ==========================================
-// TEST ORDER ROUTE
+// TEST ROUTE
 // GET /api/orders/test
 // ==========================================
 
 router.get("/test", (req, res) => {
-  res.status(200).json({
+  res.json({
     success: true,
     message: "Order route is working",
   });
 });
 
 // ==========================================
-// CREATE NEW ORDER
+// CREATE ORDER
 // POST /api/orders
 // ==========================================
 
@@ -116,11 +116,11 @@ router.post("/", async (req, res) => {
     }
 
     // ==========================================
-    // PREPARE ITEMS
+    // PREPARE ORDER ITEMS
     // ==========================================
 
     const orderItems = items.map((item) => ({
-      productId: item.productId,
+      productId: String(item.productId),
       name: String(item.name || ""),
       price: Number(item.price) || 0,
       image: String(item.image || ""),
@@ -156,12 +156,15 @@ router.post("/", async (req, res) => {
     });
 
     // ==========================================
-    // SAVE ORDER
+    // SAVE TO MONGODB
     // ==========================================
 
     const savedOrder = await newOrder.save();
 
-    console.log("✅ ORDER SAVED:", savedOrder._id);
+    console.log("================================");
+    console.log("✅ ORDER SAVED SUCCESSFULLY");
+    console.log("Order ID:", savedOrder._id);
+    console.log("================================");
 
     // ==========================================
     // SEND EMAIL
@@ -175,18 +178,16 @@ router.post("/", async (req, res) => {
         const productsHTML = orderItems
           .map(
             (item) => `
-              <div
-                style="
-                  margin-bottom: 12px;
-                  padding: 12px;
-                  border: 1px solid #ddd;
-                  border-radius: 8px;
-                "
-              >
+              <div style="
+                padding: 12px;
+                margin-bottom: 10px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+              ">
                 <strong>${item.name}</strong>
-                <br />
+                <br>
                 Price: ₹${item.price.toFixed(2)}
-                <br />
+                <br>
                 Quantity: ${item.quantity}
               </div>
             `
@@ -199,18 +200,14 @@ router.post("/", async (req, res) => {
           subject: "ShopEase - Order Confirmation",
 
           html: `
-            <div
-              style="
-                font-family: Arial, sans-serif;
-                max-width: 650px;
-                margin: auto;
-                padding: 20px;
-              "
-            >
+            <div style="
+              font-family: Arial, sans-serif;
+              max-width: 650px;
+              margin: auto;
+              padding: 20px;
+            ">
 
-              <h2>
-                🛍️ ShopEase Order Confirmation
-              </h2>
+              <h2>🛍️ ShopEase Order Confirmation</h2>
 
               <p>
                 Hello <strong>${customerName}</strong>,
@@ -221,7 +218,7 @@ router.post("/", async (req, res) => {
                 Your order has been successfully placed.
               </p>
 
-              <hr />
+              <hr>
 
               <h3>Order Details</h3>
 
@@ -239,7 +236,7 @@ router.post("/", async (req, res) => {
 
               ${productsHTML}
 
-              <hr />
+              <hr>
 
               <p>
                 <strong>Subtotal:</strong>
@@ -266,19 +263,19 @@ router.post("/", async (req, res) => {
                 ₹${Number(grandTotal || 0).toFixed(2)}
               </h2>
 
-              <hr />
+              <hr>
 
               <h3>Delivery Address</h3>
 
               <p>
                 ${address}
-                <br />
+                <br>
                 ${city} - ${pincode}
-                <br />
+                <br>
                 Phone: ${phone}
               </p>
 
-              <p style="margin-top: 30px;">
+              <p>
                 Thank you for shopping with
                 <strong>ShopEase</strong> ❤️
               </p>
@@ -295,8 +292,6 @@ router.post("/", async (req, res) => {
           "⚠️ Email sending failed:",
           emailError.message
         );
-
-        // Email failure should NOT fail the order.
       }
     } else {
       console.log(
@@ -305,7 +300,7 @@ router.post("/", async (req, res) => {
     }
 
     // ==========================================
-    // SUCCESS
+    // SUCCESS RESPONSE
     // ==========================================
 
     return res.status(201).json({
@@ -334,10 +329,7 @@ router.get("/user/:userId", async (req, res) => {
   try {
     const userId = String(req.params.userId);
 
-    console.log(
-      "========== GET USER ORDERS =========="
-    );
-
+    console.log("========== GET USER ORDERS ==========");
     console.log("User ID:", userId);
 
     const orders = await Order.find({
@@ -352,10 +344,7 @@ router.get("/user/:userId", async (req, res) => {
     });
 
   } catch (error) {
-    console.error(
-      "❌ GET ORDERS ERROR:",
-      error
-    );
+    console.error("❌ GET ORDERS ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -372,9 +361,7 @@ router.get("/user/:userId", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const order = await Order.findById(
-      req.params.id
-    );
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
       return res.status(404).json({
@@ -389,10 +376,7 @@ router.get("/:id", async (req, res) => {
     });
 
   } catch (error) {
-    console.error(
-      "❌ GET ORDER ERROR:",
-      error
-    );
+    console.error("❌ GET ORDER ERROR:", error);
 
     return res.status(500).json({
       success: false,
