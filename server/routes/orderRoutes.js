@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const Order = require("../models/Order");
-
 const nodemailer = require("nodemailer");
 
 // ==========================================
@@ -19,10 +18,12 @@ const transporter = nodemailer.createTransport({
 
 // ==========================================
 // TEST ORDER ROUTE
+// GET /api/orders/test
 // ==========================================
 
 router.get("/test", (req, res) => {
-  res.json({
+  res.status(200).json({
+    success: true,
     message: "Order route is working",
   });
 });
@@ -60,51 +61,71 @@ router.post("/", async (req, res) => {
 
     if (!userId) {
       return res.status(400).json({
+        success: false,
         message: "User ID is required",
       });
     }
 
     if (!customerName) {
       return res.status(400).json({
+        success: false,
         message: "Customer name is required",
       });
     }
 
     if (!customerEmail) {
       return res.status(400).json({
+        success: false,
         message: "Customer email is required",
       });
     }
 
     if (!phone) {
       return res.status(400).json({
+        success: false,
         message: "Phone number is required",
       });
     }
 
     if (!address) {
       return res.status(400).json({
+        success: false,
         message: "Address is required",
       });
     }
 
     if (!city) {
       return res.status(400).json({
+        success: false,
         message: "City is required",
       });
     }
 
     if (!pincode) {
       return res.status(400).json({
+        success: false,
         message: "Pincode is required",
       });
     }
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
+        success: false,
         message: "Order items are required",
       });
     }
+
+    // ==========================================
+    // PREPARE ITEMS
+    // ==========================================
+
+    const orderItems = items.map((item) => ({
+      productId: item.productId,
+      name: String(item.name || ""),
+      price: Number(item.price) || 0,
+      image: String(item.image || ""),
+      quantity: Number(item.quantity) || 1,
+    }));
 
     // ==========================================
     // CREATE ORDER
@@ -112,44 +133,30 @@ router.post("/", async (req, res) => {
 
     const newOrder = new Order({
       userId: String(userId),
-
       customerName: String(customerName),
-
       customerEmail: String(customerEmail),
-
       phone: String(phone),
-
       address: String(address),
-
       city: String(city),
-
       pincode: String(pincode),
 
-      paymentMethod: paymentMethod || "Cash on Delivery",
+      paymentMethod: String(
+        paymentMethod || "Cash on Delivery"
+      ),
 
-      items: items.map((item) => ({
-        productId: String(item.productId),
-        name: item.name,
-        price: Number(item.price),
-        image: item.image || "",
-        quantity: Number(item.quantity) || 1,
-      })),
+      items: orderItems,
 
       subtotal: Number(subtotal) || 0,
-
       discount: Number(discount) || 0,
-
       deliveryCharge: Number(deliveryCharge) || 0,
-
       gst: Number(gst) || 0,
-
       grandTotal: Number(grandTotal) || 0,
 
       status: "Order Placed",
     });
 
     // ==========================================
-    // SAVE ORDER TO MONGODB
+    // SAVE ORDER
     // ==========================================
 
     const savedOrder = await newOrder.save();
@@ -160,88 +167,120 @@ router.post("/", async (req, res) => {
     // SEND EMAIL
     // ==========================================
 
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (
+      process.env.EMAIL_USER &&
+      process.env.EMAIL_PASS
+    ) {
       try {
+        const productsHTML = orderItems
+          .map(
+            (item) => `
+              <div
+                style="
+                  margin-bottom: 12px;
+                  padding: 12px;
+                  border: 1px solid #ddd;
+                  border-radius: 8px;
+                "
+              >
+                <strong>${item.name}</strong>
+                <br />
+                Price: ₹${item.price.toFixed(2)}
+                <br />
+                Quantity: ${item.quantity}
+              </div>
+            `
+          )
+          .join("");
+
         const mailOptions = {
           from: `"ShopEase" <${process.env.EMAIL_USER}>`,
           to: customerEmail,
           subject: "ShopEase - Order Confirmation",
 
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 20px;">
+            <div
+              style="
+                font-family: Arial, sans-serif;
+                max-width: 650px;
+                margin: auto;
+                padding: 20px;
+              "
+            >
 
-              <h2 style="color: #333;">
+              <h2>
                 🛍️ ShopEase Order Confirmation
               </h2>
 
-              <p>Hello <strong>${customerName}</strong>,</p>
-
               <p>
-                Thank you for your order! Your order has been successfully placed.
+                Hello <strong>${customerName}</strong>,
               </p>
 
-              <hr>
+              <p>
+                Thank you for your order!
+                Your order has been successfully placed.
+              </p>
+
+              <hr />
 
               <h3>Order Details</h3>
 
               <p>
-                <strong>Order ID:</strong> ${savedOrder._id}
+                <strong>Order ID:</strong>
+                ${savedOrder._id}
               </p>
 
               <p>
-                <strong>Payment Method:</strong> ${paymentMethod || "Cash on Delivery"}
+                <strong>Payment Method:</strong>
+                ${paymentMethod || "Cash on Delivery"}
               </p>
 
               <h3>Products</h3>
 
-              ${items
-                .map(
-                  (item) => `
-                    <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #ddd;">
-                      <strong>${item.name}</strong>
-                      <br>
-                      Price: ₹${Number(item.price).toFixed(2)}
-                      <br>
-                      Quantity: ${Number(item.quantity) || 1}
-                    </div>
-                  `
-                )
-                .join("")}
+              ${productsHTML}
 
-              <hr>
+              <hr />
 
               <p>
-                <strong>Subtotal:</strong> ₹${Number(subtotal || 0).toFixed(2)}
+                <strong>Subtotal:</strong>
+                ₹${Number(subtotal || 0).toFixed(2)}
               </p>
 
               <p>
-                <strong>Discount:</strong> ₹${Number(discount || 0).toFixed(2)}
+                <strong>Discount:</strong>
+                ₹${Number(discount || 0).toFixed(2)}
               </p>
 
               <p>
-                <strong>Delivery:</strong> ₹${Number(deliveryCharge || 0).toFixed(2)}
+                <strong>Delivery:</strong>
+                ₹${Number(deliveryCharge || 0).toFixed(2)}
               </p>
 
               <p>
-                <strong>GST:</strong> ₹${Number(gst || 0).toFixed(2)}
+                <strong>GST:</strong>
+                ₹${Number(gst || 0).toFixed(2)}
               </p>
 
               <h2>
-                Grand Total: ₹${Number(grandTotal || 0).toFixed(2)}
+                Grand Total:
+                ₹${Number(grandTotal || 0).toFixed(2)}
               </h2>
 
-              <hr>
+              <hr />
 
               <h3>Delivery Address</h3>
 
               <p>
-                ${address}<br>
-                ${city} - ${pincode}<br>
+                ${address}
+                <br />
+                ${city} - ${pincode}
+                <br />
                 Phone: ${phone}
               </p>
 
               <p style="margin-top: 30px;">
-                Thank you for shopping with <strong>ShopEase</strong> ❤️
+                Thank you for shopping with
+                <strong>ShopEase</strong> ❤️
               </p>
 
             </div>
@@ -252,17 +291,21 @@ router.post("/", async (req, res) => {
 
         console.log("✅ Confirmation email sent");
       } catch (emailError) {
-        console.log("⚠️ Email sending failed:", emailError.message);
+        console.log(
+          "⚠️ Email sending failed:",
+          emailError.message
+        );
 
-        // IMPORTANT:
-        // Email failure should NOT make the order fail.
+        // Email failure should NOT fail the order.
       }
     } else {
-      console.log("⚠️ EMAIL_USER / EMAIL_PASS not configured");
+      console.log(
+        "⚠️ EMAIL_USER / EMAIL_PASS not configured"
+      );
     }
 
     // ==========================================
-    // SUCCESS RESPONSE
+    // SUCCESS
     // ==========================================
 
     return res.status(201).json({
@@ -270,6 +313,7 @@ router.post("/", async (req, res) => {
       message: "Order placed successfully",
       order: savedOrder,
     });
+
   } catch (error) {
     console.error("❌ ORDER ERROR:", error);
 
@@ -282,29 +326,36 @@ router.post("/", async (req, res) => {
 });
 
 // ==========================================
-// GET ORDERS FOR USER
+// GET USER ORDERS
 // GET /api/orders/user/:userId
 // ==========================================
 
 router.get("/user/:userId", async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.params.userId);
 
-    console.log("========== GET USER ORDERS ==========");
+    console.log(
+      "========== GET USER ORDERS =========="
+    );
+
     console.log("User ID:", userId);
 
     const orders = await Order.find({
-      userId: String(userId),
+      userId: userId,
     }).sort({
       createdAt: -1,
     });
 
     return res.status(200).json({
       success: true,
-      orders,
+      orders: orders,
     });
+
   } catch (error) {
-    console.error("❌ GET ORDERS ERROR:", error);
+    console.error(
+      "❌ GET ORDERS ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -321,7 +372,9 @@ router.get("/user/:userId", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(
+      req.params.id
+    );
 
     if (!order) {
       return res.status(404).json({
@@ -332,10 +385,14 @@ router.get("/:id", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      order,
+      order: order,
     });
+
   } catch (error) {
-    console.error("❌ GET ORDER ERROR:", error);
+    console.error(
+      "❌ GET ORDER ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -346,7 +403,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ==========================================
-// EXPORT ROUTER
+// EXPORT
 // ==========================================
 
 module.exports = router;
